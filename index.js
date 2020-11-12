@@ -21,37 +21,41 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 client.connect(err => {
     const product_collection = client.db("db_zoynax").collection("coll_products");
     const promo_code_collection = client.db("db_zoynax").collection("coll_promo_code");
-    
+    const user_collection = client.db("db_zoynax").collection("coll_user");
+    const admin_collection = client.db("db_zoynax").collection("coll_admin");
+    const order_collection = client.db("db_zoynax").collection("coll_order");
     console.log("db connected")
 
-    
-    //------------------ product_collection
 
-    app.post('/addProduct', (req,res)=>{
+    //------------------ product ------------------------------------------------------------------------
+
+    app.post('/addProduct', (req, res) => { // -----------add product
         // console.log(req.body.price);
         product_collection.insertOne(req.body)
             .then(result => {
                 res.send(result.insertedCount > 0)
             })
     })
-    app.get('/getAllProduct', (req,res)=>{
-        product_collection.find({active: true})
+    app.get('/getAllProduct', (req, res) => { // ----------- get all product
+        product_collection.find({ active: true })
             .toArray((err, documents) => {
-                    res.send(documents)
+                res.send(documents)
             })
     })
 
-    app.post('/findCarts' , (req,res)=>{
+    app.post('/findCarts', (req, res) => { // --------- find cart-products from product
         const listOfIds = (req.body)
-        const documentIds = listOfIds.map(function(myId) { return ObjectId(myId); });
-        product_collection.find({_id: {$in: documentIds }})
-        .toArray((err, documents)=>{
-            res.send(documents)
-        })
+        const documentIds = listOfIds.map(function (myId) { return ObjectId(myId); });
+        product_collection.find({ _id: { $in: documentIds } })
+            .toArray((err, documents) => {
+                res.send(documents)
+            })
     })
-    
-    //----------------------
-    app.post('/addPromoCode', (req,res)=>{
+
+    //---------------------- Promo Code api -------------------------------------------------------
+
+
+    app.post('/addPromoCode', (req, res) => { // ----------- add promo code
         // console.log(req.body);
         promo_code_collection.insertOne(req.body)
             .then(result => {
@@ -59,36 +63,98 @@ client.connect(err => {
             })
     })
 
-    app.get('/getAllPromo', (req,res)=>{
+    app.get('/getAllPromo', (req, res) => { // ----------- get all promo codes
         promo_code_collection.find({})
             .toArray((err, documents) => {
-                    res.send(documents)
+                res.send(documents)
             })
     })
-    app.get('/getPromoById/:id', (req,res)=>{
+    app.get('/getPromoById/:id', (req, res) => { // ----------- get a promo code by id
         // const id = req.params.id;
-        promo_code_collection.find({_id: ObjectId(req.params.id) })
+        promo_code_collection.find({ _id: ObjectId(req.params.id) })
             .toArray((err, documents) => {
-                    res.send(documents[0])
+                res.send(documents[0])
             })
     })
-    app.patch('/updatePromoCode', (req,res)=>{ //---------------- update Status
+    app.patch('/updatePromoCode', (req, res) => { //---------------- update promo code
         // console.log(req.body)
         promo_code_collection.updateOne(
-            {_id : ObjectId(req.body.id)},
+            { _id: ObjectId(req.body.id) },
             {
                 $set: req.body.codeInfo,
-                $currentDate : { "lastModified": true }
+                $currentDate: { "lastModified": true }
             }
         )
-        .then(result =>{
-            res.send(result.modifiedCount > 0)
-        })
+            .then(result => {
+                res.send(result.modifiedCount > 0)
+            })
     })
 
-    //-----------------------------------------
-
     
+
+    //--------------------------------- orders ---------------------------------------------------
+
+    app.post('/placeOrder', (req, res) => { // ----------- place a order from user
+        // console.log(req.body);
+        order_collection.insertOne(req.body)
+            .then(result => {
+                res.send(result.insertedCount > 0)
+            })
+    })
+    app.get('/getAllOrder', (req, res) => { // ----------- get all orders for admin
+        order_collection.find({})
+            .toArray((err, documents) => {
+                res.send(documents)
+            })
+    })
+
+    app.patch('/updateOrderStatus', (req, res) => { //------ update order Status
+        // console.log(req.body)
+        order_collection.updateOne(
+            { _id: ObjectId(req.body.id) },
+            {
+                $set: req.body.newOrderInfo,
+                $currentDate: { "lastModified": true }
+            }
+        )
+            .then(result => {
+                res.send(result.modifiedCount > 0)
+            })
+    })
+
+    //------------------------- user api ----------------------------------------------------------
+
+    app.post('/user', (req, res) => { // ----------- get user data or add new user
+        // console.log(req.body.phone);
+        user_collection.find({ phone: req.body.phone })
+            .toArray((err, documents) => {
+                if (err) {
+                    console.log('user err');
+                }
+                if (documents.length > 0) {
+                    res.send(documents[0])
+                } else {
+                    user_collection.insertOne(req.body)
+                        .then(result => {
+                            res.send(result.insertedCount > 0)
+                        })
+                }
+            })
+    })
+    //------------------------- admin auth api ----------------------------------------------------------
+
+    app.post('/admin', (req, res) => { // ----------- admin auth
+        // console.log(req.body.phone);
+        admin_collection.find({ phone: req.body.phone, password: req.body.password })
+            .toArray((err, documents) => {
+                if (documents.length > 0) {
+                    res.send(true)
+                } else {
+                    res.send(false)
+                }
+            })
+    })
+
 
 });
 
